@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@font-face {
+    font-family: 'Anuphan';
+    src: url(../fonts/Anuphan-Regular.ttf) format('truetype');
+    font-weight: 500;
+}
+
+@font-face {
+    font-family: 'Anuphan';
+    src: url(../fonts/Anuphan-SemiBold.ttf) format('truetype');
+    font-weight: 600;
+}
+
+@font-face {
+    font-family: 'Anuphan';
+    src: url(../fonts/Anuphan-Bold.ttf) format('truetype');
+    font-weight: 700;
+}
+
+@layer base {
+    body {
+        font-family: 'Anuphan', sans-serif;
+    }
+}

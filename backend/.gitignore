@@ -1,0 +1,23 @@
+/*************  ✨ Codeium Command ⭐  *************/
+# Ignore all files
+*
+
+# Whitelist specific directories or files
+!/.gitignore
+!/important-directory/
+!/important-file.txt
+
+# Ignore specific file types
+*.log
+*.tmp
+
+# Ignore node_modules and build directories
+node_modules/
+dist/
+build/
+
+.env
+.env.dev
+.env.prod
+go.sum
+go.mod
