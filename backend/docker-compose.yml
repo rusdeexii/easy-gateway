@@ -1,0 +1,195 @@
+version: "3.9"
+
+services:
+  # 📦 RabbitMQ (Queue broker)
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_container
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672" # UI management
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - gateway_net
+
+  # 📦 PostgreSQL for Callback
+  postgres_callback:
+    image: postgres:15
+    container_name: postgres_callback
+    env_file:
+      - ./callback-service/.env.dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_callback_data:/var/lib/postgresql/data
+    networks:
+      - gateway_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pguser -d pg_callback"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 📦 PostgreSQL for Auth
+  postgres_auth:
+    image: postgres:15
+    container_name: postgres_auth
+    env_file:
+      - ./auth-service/.env.dev
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - gateway_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pguser -d pg_auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 📦 PostgreSQL for Merchant
+  postgres_merchant:
+    image: postgres:15
+    container_name: postgres_merchant
+    env_file:
+      - ./merchant-service/.env.dev
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_merchant_data:/var/lib/postgresql/data
+    networks:
+      - gateway_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pguser -d pg_merchant"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 🧑‍💻 Auth Service
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth_service
+    ports:
+      - "8081:8081"
+    env_file:
+      - ./auth-service/.env.dev
+    depends_on:
+      postgres_auth:
+        condition: service_healthy
+    networks:
+      - gateway_net
+
+  # 🧾 Callback Service
+  callback-service:
+    build:
+      context: ./callback-service
+      dockerfile: Dockerfile
+    container_name: callback_service
+    ports:
+      - "8082:8082"
+    env_file:
+      - ./callback-service/.env.dev
+    depends_on:
+      postgres_callback:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - gateway_net
+
+  # 🏪 Merchant Service
+  merchant-service:
+    build:
+      context: ./merchant-service
+      dockerfile: Dockerfile
+    container_name: merchant_service
+    ports:
+      - "8084:8084"
+    env_file:
+      - ./merchant-service/.env.dev
+    depends_on:
+      postgres_merchant:
+        condition: service_healthy
+    networks:
+      - gateway_net
+
+  # 📣 Notification Service
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification_service
+    env_file:
+      - ./notification-service/.env.dev
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    networks:
+      - gateway_net
+
+  # 🔄 Gateway Agent (Queue processor)
+  agent-service:
+    build:
+      context: ./agent-service
+      dockerfile: Dockerfile
+    container_name: agent_service
+    env_file:
+      - ./agent-service/.env.dev
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    networks:
+      - gateway_net
+
+  # 🚀 API Gateway
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: gateway_service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - merchant-service
+      - callback-service
+      - notification-service
+      - statement-service
+      - agent-service
+    networks:
+      - gateway_net
+
+  # 📊 Statement Service
+  statement-service:
+    build:
+      context: ./statement-service
+      dockerfile: Dockerfile
+    container_name: statement_service
+    ports:
+      - "8086:8086"
+    env_file:
+      - ./statement-service/.env.dev
+    depends_on:
+      postgres_callback:
+        condition: service_healthy
+    networks:
+      - gateway_net
+
+# ✅ Volume storage per database (ไม่รวม SQL init)
+volumes:
+  rabbitmq_data:
+  postgres_auth_data:
+  postgres_callback_data:
+  postgres_merchant_data:
+
+# ✅ Shared Docker network
+networks:
+  gateway_net:
+    driver: bridge
