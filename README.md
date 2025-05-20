@@ -14,7 +14,7 @@ A modern **microservices-based payment gateway** system with full-stack security
 
 ### 🧱 Microservices Architecture
 - **`auth-service`** – Handles login, registration, user management  
-- **`callback-service`** – Manages webhook callbacks (SCB, KBANK, TTB)
+- **`callback-service`** – Manages webhook callbacks (BANK)
 - **`agent-service`** – Dispatches messages to message queue  
 - **`statement-service`** – Aggregates and formats transaction history  
 - **`merchant-service`** – Manages merchant registration & webhooks  
